@@ -34,6 +34,7 @@ void encrypt(){
  * *********************************************************************/
 void check_background(){
     pid_t cpid; //For storing the terminated process's id
+    int signal;
     
     //Wait for any child process, return immediately if none have exited
     cpid = waitpid(-1, &signal, WNOHANG);
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
                 printf("Connection successful!\n");
                 break;
             case -1:
-                error(stderr,"otp_enc_d ERROR forking process");
+                error("otp_enc_d ERROR forking process");
                 break; 
         }
         close(establishedConnectionFD);//Close connection socket
