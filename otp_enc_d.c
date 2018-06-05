@@ -14,14 +14,23 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#define SIZE 1000 //Buffer size
+#define MAX_CONNECTIONS 5 //Max number of socket connections
+
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
+
+void encrypt(){
+
+    return;
+}
 
 int main(int argc, char *argv[])
 {
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
 	socklen_t sizeOfClientInfo;
-	char buffer[256];
+	char buffer[SIZE];
 	struct sockaddr_in serverAddress, clientAddress;
+    pid_t pid, exit_pid; //process id and exit pid for handling children 
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
@@ -38,24 +47,39 @@ int main(int argc, char *argv[])
 
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
-		error("ERROR on binding");
+		error("otp_end_d ERROR on binding");
+
 	listen(listenSocketFD, 5); // Flip the socket on - it can now receive up to 5 connections
 
-	// Accept a connection, blocking if one is not available until one connects
-	sizeOfClientInfo = sizeof(clientAddress); // Get the size of the address for the client that will connect
-	establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
-	if (establishedConnectionFD < 0) error("ERROR on accept");
+    while(1){ //Start listening continuously for connections
 
-	// Get the message from the client and display it
-	memset(buffer, '\0', 256);
-	charsRead = recv(establishedConnectionFD, buffer, 255, 0); // Read the client's message from the socket
-	if (charsRead < 0) error("ERROR reading from socket");
-	printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+        // Accept a connection, blocking if one is not available until one connects
+        sizeOfClientInfo = sizeof(clientAddress); // Get the size of the address for the client that will connect
+        establishedConnectionFD = accept(listenSocketFD, (struct sockaddr *)&clientAddress, &sizeOfClientInfo); // Accept
+        if (establishedConnectionFD < 0) error("otp_enc_d ERROR on accept");
 
-	// Send a Success message back to the client
-	charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-	if (charsRead < 0) error("ERROR writing to socket");
-	close(establishedConnectionFD); // Close the existing socket which is connected to the client
-	close(listenSocketFD); // Close the listening socket
+        // Fork another process to handle the encryption
+        pid = fork();
+        switch(pid){
+            case 0: //Successful fork, handles the connection with encryption
+                memset(buffer, '\0', SIZE); //Zero out buffer
+                break;
+            case -1:
+                error(stderr,"otp_enc_d ERROR forking process");
+                break; 
+        }
+        close(establishedConnectionFD);//Close connection socket
+
+        /*// Get the message from the client and display it
+        memset(buffer, '\0', SIZE);
+        charsRead = recv(establishedConnectionFD, buffer, SIZE - 1, 0); // Read the client's message from the socket
+        if (charsRead < 0) error("ERROR reading from socket");
+        printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+
+        // Send a Success message back to the client
+        charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
+        if (charsRead < 0) error("ERROR writing to socket");*/
+    }
+    close(listenSocketFD);//Close listening socket
 	return 0; 
 }
