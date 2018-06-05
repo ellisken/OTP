@@ -24,13 +24,37 @@ void encrypt(){
     return;
 }
 
+
+
+/************************************************************************
+ * ** Function: check_background()
+ * ** Description: Checks for the background child processes that have
+ *      finished and cleans up zombies
+ * ** Parameters: none
+ * *********************************************************************/
+void check_background(){
+    pid_t cpid; //For storing the terminated process's id
+    
+    //Wait for any child process, return immediately if none have exited
+    cpid = waitpid(-1, &signal, WNOHANG);
+    while(cpid > 0){
+        cpid = waitpid(-1, &signal, WNOHANG);
+    }
+    return;
+}
+
+
+
+/***********************************************************************
+ *                                 MAIN
+ * ********************************************************************/
 int main(int argc, char *argv[])
 {
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
 	socklen_t sizeOfClientInfo;
 	char buffer[SIZE];
 	struct sockaddr_in serverAddress, clientAddress;
-    pid_t pid, exit_pid; //process id and exit pid for handling children 
+    pid_t pid; //child process id 
 
 	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
 
@@ -63,12 +87,14 @@ int main(int argc, char *argv[])
         switch(pid){
             case 0: //Successful fork, handles the connection with encryption
                 memset(buffer, '\0', SIZE); //Zero out buffer
+                printf("Connection successful!\n");
                 break;
             case -1:
                 error(stderr,"otp_enc_d ERROR forking process");
                 break; 
         }
         close(establishedConnectionFD);//Close connection socket
+        check_background();//Clean up child processes
 
         /*// Get the message from the client and display it
         memset(buffer, '\0', SIZE);
