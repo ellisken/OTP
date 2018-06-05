@@ -16,6 +16,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
+#define MAX_SEND_LENGTH 1000 //Max # of chars sent at any given time
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
@@ -94,19 +95,27 @@ bool authenticate_client(char *buffer, int socketFD){
 
 /************************************************************************
  * ** Function: send_msg()
- * ** Description: Sends a specified message to the client over the
- *      specified connection socket
+ * ** Description: Sends a specified message or text to the client over
+ *      the specified connection socket in chunks to ensure entire
+ *      message is sent
  * ** Parameters: The connection socket file desriptor
  *      and a constant char message to send.
  * *********************************************************************/
-void send_msg(int socketFD, const char *msg){
-    int chars_read;
+void send_msg(int socketFD, char *msg){
+    int chars_sent; //Used to track how many chars have been sent
+    int message_length = strlen(msg); //Used to track how many chars (bytes) total to send 
+    char *current_location = msg; //Used to track where in the message we are, starts at beginning
 
-    //Send message
-    chars_read = send(socketFD, msg, strlen(msg), 0);
-    //Check success
-    if (charsRead < 0) error("ERROR writing to socket");
-
+    //Keep sending until entire message has been sent
+    while(message_length > 0){
+        //Send message in chunks of 1000
+        chars_sent = send(socketFD, current_location, MAX_SEND_LENGTH, 0);
+        //Check for errors
+        if (chars_sent < 0) error("ERROR writing to socket");
+        //Update remaining message length to send and current_location 
+        message_length = message_length - chars_sent;
+        current_location = current_location + chars_sent;
+    }
     return;
 }
 
@@ -187,7 +196,7 @@ int main(int argc, char *argv[])
             case 0: //Successful fork, handles the connection with encryption
                 printf("Connection successful!\n");
                 //Authenticate client
-                if(authenticate(buffer, establishedConnectionFD) == false){
+                if(authenticate_client(buffer, establishedConnectionFD) == false){
                     //Send error message
                     send_msg(establishedConnectionFD, "unauthorized");
                 }
@@ -195,13 +204,15 @@ int main(int argc, char *argv[])
                     //Send acknowledgment
                     send_msg(establishedConnectionFD, "authorized");
                     //Get Text
-                    void get_msg(buffer, establishedConnectionFD){
+                    get_msg(buffer, establishedConnectionFD);
                     //Send ok msg
                     send_msg(establishedConnectionFD, "proceed");
                     //Get Key
-                    void get_msg(key, establishedConnectionFD){
+                    get_msg(key, establishedConnectionFD);
                     //Encrypt
+                    printf("encryption\n");
                     //Send cipher
+                    printf("sent cipher\n");
                 }
                 break;
             case -1:
@@ -210,7 +221,6 @@ int main(int argc, char *argv[])
         }
         close(establishedConnectionFD);//Close connection socket
         check_background();//Clean up child processes
-
     }
     close(listenSocketFD);//Close listening socket
 	return 0; 
