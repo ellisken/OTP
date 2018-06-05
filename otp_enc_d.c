@@ -13,12 +13,110 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 
-#define SIZE 1000 //Buffer size
+#define SIZE 10000 //Buffer size
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
+        /*// Get the message from the client and display it
+        memset(buffer, '\0', SIZE);
+        charsRead = recv(establishedConnectionFD, buffer, SIZE - 1, 0); // Read the client's message from the socket
+        if (charsRead < 0) error("ERROR reading from socket");
+        printf("SERVER: I received this from the client: \"%s\"\n", buffer);
+
+        // Send a Success message back to the client
+        charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
+        if (charsRead < 0) error("ERROR writing to socket");*/
+
+
+
+/************************************************************************
+ * ** Function: get_msg()
+ * ** Description: Reads in a message sent from the client until
+ *      a newline character is reached.
+ * ** Parameters: char buffer for storing complete message,
+ *      file descriptor for connection socket.
+ * *********************************************************************/
+void get_msg(char *buffer, int socketFD){
+    int chars_read; //For checking correct read
+    char readBuffer[10];
+    
+    //Clear buffer
+    memset(buffer, '\0', sizeof(buffer));
+
+    //As long as we have not reached a newline
+    while(strstr(buffer, "\n") == NULL){
+        //Clear readBuffer
+        memset(readBuffer, '\0', sizeof(readBuffer));
+        chars_read = recv(socketFD, readBuffer, sizeof(readBuffer)-1, 0); //Get a chunk of text
+        strcat(buffer, readBuffer); //Add chunk to complete text
+        if(chars_read == -1){
+            error("ERROR reading from socket");
+        }
+        //Handle case where there is nothing to read
+        if(chars_read == 0) break;
+    }
+    return;
+}
+
+
+
+/************************************************************************
+ * ** Function: authenticate_client()
+ * ** Description: Gets the first message sent from the client. If  
+ *      message received == "enc", return true, else return false.
+ * ** Parameters: a char buffer for storing the message, the connection
+ *      socket file descriptor
+ * *********************************************************************/
+bool authenticate_client(char *buffer, int socketFD){
+    int chars_read; //For checking correct read
+
+    //Clear buffer
+    memset(buffer, '\0', SIZE);
+
+    //Read from socket
+    chars_read = recv(socketFD, buffer, SIZE-1, 0);
+
+    //Check for success
+    if(chars_read < 0) error ("ERROR reading from socket");
+
+    //If msg is "enc", return true
+    if(strcmp(buffer, "enc") == 0){
+        return true;
+    }
+
+    else return false;
+}
+
+
+
+/************************************************************************
+ * ** Function: send_msg()
+ * ** Description: Sends a specified message to the client over the
+ *      specified connection socket
+ * ** Parameters: The connection socket file desriptor
+ *      and a constant char message to send.
+ * *********************************************************************/
+void send_msg(int socketFD, const char *msg){
+    int chars_read;
+
+    //Send message
+    chars_read = send(socketFD, msg, strlen(msg), 0);
+    //Check success
+    if (charsRead < 0) error("ERROR writing to socket");
+
+    return;
+}
+
+
+
+/************************************************************************
+ * ** Function: encrypt()
+ * ** Description: 
+ * ** Parameters: 
+ * *********************************************************************/
 void encrypt(){
 
     return;
@@ -53,7 +151,7 @@ int main(int argc, char *argv[])
 {
 	int listenSocketFD, establishedConnectionFD, portNumber, charsRead;
 	socklen_t sizeOfClientInfo;
-	char buffer[SIZE];
+	char buffer[SIZE], key[SIZE], cipher[SIZE];
 	struct sockaddr_in serverAddress, clientAddress;
     pid_t pid; //child process id 
 
@@ -87,8 +185,24 @@ int main(int argc, char *argv[])
         pid = fork();
         switch(pid){
             case 0: //Successful fork, handles the connection with encryption
-                memset(buffer, '\0', SIZE); //Zero out buffer
                 printf("Connection successful!\n");
+                //Authenticate client
+                if(authenticate(buffer, establishedConnectionFD) == false){
+                    //Send error message
+                    send_msg(establishedConnectionFD, "unauthorized");
+                }
+                else{
+                    //Send acknowledgment
+                    send_msg(establishedConnectionFD, "authorized");
+                    //Get Text
+                    void get_msg(buffer, establishedConnectionFD){
+                    //Send ok msg
+                    send_msg(establishedConnectionFD, "proceed");
+                    //Get Key
+                    void get_msg(key, establishedConnectionFD){
+                    //Encrypt
+                    //Send cipher
+                }
                 break;
             case -1:
                 error("otp_enc_d ERROR forking process");
@@ -97,15 +211,6 @@ int main(int argc, char *argv[])
         close(establishedConnectionFD);//Close connection socket
         check_background();//Clean up child processes
 
-        /*// Get the message from the client and display it
-        memset(buffer, '\0', SIZE);
-        charsRead = recv(establishedConnectionFD, buffer, SIZE - 1, 0); // Read the client's message from the socket
-        if (charsRead < 0) error("ERROR reading from socket");
-        printf("SERVER: I received this from the client: \"%s\"\n", buffer);
-
-        // Send a Success message back to the client
-        charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-        if (charsRead < 0) error("ERROR writing to socket");*/
     }
     close(listenSocketFD);//Close listening socket
 	return 0; 
