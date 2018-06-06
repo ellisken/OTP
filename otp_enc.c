@@ -16,25 +16,104 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
 #define MAX_SEND_LENGTH 1000 //Max # of chars sent at any given time
 
+/************************************************************************
+ * ** Function: check_background()
+ * ** Description: Checks for the background child processes that have
+ *      finished and cleans up zombies
+ * ** Parameters: none
+ * *********************************************************************/
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
+   
 
+
+/************************************************************************
+ * ** Function: check_background()
+ * ** Description: Checks for the background child processes that have
+ *      finished and cleans up zombies
+ * ** Parameters: none
+ * *********************************************************************/
+void load_from_file(char *buffer, FILE *file, char *filename){
+    int charsRead;
+
+    memset(buffer, '\0', sizeof(buffer));
+    //Open file
+    file = fopen(filename, "r");
+    if(file == NULL){
+        error("Can't open file.\n");
+    }
+    //Read from file
+    while(!feof(file)){
+        charsRead = fread(buffer, sizeof(char), SIZE, file);
+    }
+    //Strip trailing newline char
+    buffer[strlen(buffer) - 1] = '\0';
+
+    //Close file
+    fclose(file);
+    return;
+}
+
+
+
+/************************************************************************
+ * ** Function: check_background()
+ * ** Description: Checks for the background child processes that have
+ *      finished and cleans up zombies
+ * ** Parameters: none
+ * *********************************************************************/
+void verify_text(char *text){
+    int i;
+    int length = strlen(text);
+    char valid_chars[27] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
+
+    //Verify that each char is valid
+    for(i=0; i < length; i++){
+        printf("current char is %c\n", text[i]);
+        //Search for a match among valid characters
+        if(strchr(valid_chars, text[i]) == NULL){
+            //If not found, send error
+            error("Text entered is invalid\n");
+        } 
+    }
+    //Else, text consists of only valid chars
+    return;
+}
+
+
+
+/***********************************************************************
+ *                                 MAIN
+ * ********************************************************************/
 int main(int argc, char *argv[])
 {
 	int socketFD, portNumber, charsWritten, charsRead;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
-	char buffer[256];
+	char buffer[SIZE], key[SIZE];
+    FILE *file = NULL;
+
     
 	if (argc < 4) { fprintf(stderr,"USAGE: %s plaintext key port\n", argv[0]); exit(0); } // Check usage & args
     
     //Load plaintext and key into buffers
+    load_from_file(buffer, file, argv[1]);
+    load_from_file(key, file, argv[2]);
+    //printf("plaintext: %s\n", buffer);
+    //printf("key: %s\n", key);
 
-    //Verify plaintext and key are valid (readable), contain only "legal"
+    //Verify plaintext and key are valid contain only "legal"
     //characters, and that key >= plaintext in terms of size
+    verify_text(buffer);
+    verify_text(key);
+    if(strlen(buffer) > strlen(key)){
+        error("Error: key is too short\n");
+    }
+
 
 	// Set up the server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
