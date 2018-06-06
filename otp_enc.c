@@ -73,7 +73,6 @@ void verify_text(char *text){
 
     //Verify that each char is valid
     for(i=0; i < length; i++){
-        printf("current char is %c\n", text[i]);
         //Search for a match among valid characters
         if(strchr(valid_chars, text[i]) == NULL){
             //If not found, send error
@@ -103,8 +102,6 @@ int main(int argc, char *argv[])
     //Load plaintext and key into buffers
     load_from_file(buffer, file, argv[1]);
     load_from_file(key, file, argv[2]);
-    //printf("plaintext: %s\n", buffer);
-    //printf("key: %s\n", key);
 
     //Verify plaintext and key are valid contain only "legal"
     //characters, and that key >= plaintext in terms of size
