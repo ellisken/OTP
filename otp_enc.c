@@ -19,7 +19,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
-#define MAX_SEND_LENGTH 1000 //Max # of chars sent at any given time
+#define MAX_SEND_LENGTH 100//Max # of chars sent at any given time
 
 /************************************************************************
  * ** Function: check_background()
@@ -85,6 +85,66 @@ void verify_text(char *text){
 
 
 
+/************************************************************************
+ * ** Function: get_msg()
+ * ** Description: Reads in a message sent from the client until
+ *      a newline character is reached.
+ * ** Parameters: char buffer for storing complete message,
+ *      file descriptor for connection socket.
+ * *********************************************************************/
+void get_msg(char *buffer, int socketFD){
+    int chars_read; //For checking correct read
+    char readBuffer[1];
+    
+    //Clear buffer
+    memset(buffer, '\0', sizeof(buffer));
+
+    //As long as we have not reached a newline
+    while(strstr(buffer, "\n") == NULL){
+        //Clear readBuffer
+        memset(readBuffer, '\0', sizeof(readBuffer));
+        chars_read = recv(socketFD, readBuffer, sizeof(readBuffer)-1, 0); //Get a chunk of text
+        strcat(buffer, readBuffer); //Add chunk to complete text
+        if(chars_read == -1){
+            error("ERROR reading from socket");
+        }
+        //Handle case where there is nothing to read
+        if(chars_read == 0) break;
+    }
+    return;
+}
+
+
+
+/************************************************************************
+ * ** Function: send_msg()
+ * ** Description: Sends a specified message or text to the client over
+ *      the specified connection socket in chunks to ensure entire
+ *      message is sent
+ * ** Parameters: The connection socket file desriptor
+ *      and a constant char message to send.
+ * *********************************************************************/
+void send_msg(int socketFD, char *msg){
+    int chars_sent; //Used to track how many chars have been sent
+    int message_length = strlen(msg); //Used to track how many chars (bytes) total to send 
+    char *current_location = msg; //Used to track where in the message we are, starts at beginning
+
+    //Keep sending until entire message has been sent
+    while(message_length > 0){
+        //Send message in chunks of MAX_SEND_LENGTH
+        chars_sent = send(socketFD, current_location, MAX_SEND_LENGTH, 0);
+        //Check for errors
+        if (chars_sent < 0) error("ERROR writing to socket");
+        //Update remaining message length to send and current_location 
+        message_length = message_length - chars_sent;
+        current_location = current_location + chars_sent;
+    }
+    //send(socketFD, "\n", 1, 0);
+    return;
+}
+
+
+
 /***********************************************************************
  *                                 MAIN
  * ********************************************************************/
@@ -93,28 +153,31 @@ int main(int argc, char *argv[])
 	int socketFD, portNumber, charsWritten, charsRead;
 	struct sockaddr_in serverAddress;
 	struct hostent* serverHostInfo;
-	char buffer[SIZE], key[SIZE];
+	char buffer[SIZE], text[SIZE], key[SIZE];
     FILE *file = NULL;
 
     
 	if (argc < 4) { fprintf(stderr,"USAGE: %s plaintext key port\n", argv[0]); exit(0); } // Check usage & args
     
     //Load plaintext and key into buffers
-    load_from_file(buffer, file, argv[1]);
+    load_from_file(text, file, argv[1]);
     load_from_file(key, file, argv[2]);
+    //printf("Text: %s\n", text);
+    //printf("Key: %s\n", key);
+
 
     //Verify plaintext and key are valid contain only "legal"
     //characters, and that key >= plaintext in terms of size
-    verify_text(buffer);
+    verify_text(text);
     verify_text(key);
-    if(strlen(buffer) > strlen(key)){
+    if(strlen(text) > strlen(key)){
         error("Error: key is too short\n");
     }
 
 
 	// Set up the server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
-	portNumber = atoi(argv[2]); // Get the port number, convert to an integer from a string
+	portNumber = atoi(argv[3]); // Get the port number, convert to an integer from a string
 	serverAddress.sin_family = AF_INET; // Create a network-capable socket
 	serverAddress.sin_port = htons(portNumber); // Store the port number
 	serverHostInfo = gethostbyname("localhost"); // Convert the machine name into a special form of address
@@ -130,30 +193,34 @@ int main(int argc, char *argv[])
 		error("CLIENT: ERROR connecting");
 
     //Send authentication password "enc"
-    //Receive ok to send text
+    send_msg(socketFD, "enc");
+
+    //Receive authorized/unauthorized message and handle
+    get_msg(buffer, socketFD);
+    if(strcmp(buffer, "unauthorized") == 0){
+        error("Error: unauthorized connection to server\n");    
+    }
+
+    //Add ending newlines back to plaintext and key
+    text[strlen(text)] = '\n';
+    key[strlen(key)] = '\n';
     //Send plaintext
+    send_msg(socketFD, text); 
     //Receive ok to send key
+    //get_msg(buffer, socketFD);
+    //printf("Server sent: %s\n", buffer);
+    printf("Now sending key...\n");
     //Send key
+    //sleep(5);
+    send_msg(socketFD, key);
+    sleep(1);
     //Wait to receive cipher
+    printf("Now accepting cipher...\n");
+    get_msg(buffer, socketFD);
     //Print cipher to console
-
-	/*// Get input message from user
-	printf("CLIENT: Enter text to send to the server, and then hit enter: ");
-	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer array
-	fgets(buffer, sizeof(buffer) - 1, stdin); // Get input from the user, trunc to buffer - 1 chars, leaving \0
-	buffer[strcspn(buffer, "\n")] = '\0'; // Remove the trailing \n that fgets adds
-
-	// Send message to server
-	charsWritten = send(socketFD, buffer, strlen(buffer), 0); // Write to the server
-	if (charsWritten < 0) error("CLIENT: ERROR writing to socket");
-	if (charsWritten < strlen(buffer)) printf("CLIENT: WARNING: Not all data written to socket!\n");
-
-	// Get return message from server
-	memset(buffer, '\0', sizeof(buffer)); // Clear out the buffer again for reuse
-	charsRead = recv(socketFD, buffer, sizeof(buffer) - 1, 0); // Read data from the socket, leaving \0 at end
-	if (charsRead < 0) error("CLIENT: ERROR reading from socket");
-	printf("CLIENT: I received this from the server: \"%s\"\n", buffer);*/
-
+    printf("%s\n", buffer);
+    
+    shutdown(socketFD, SHUT_WR);
 	close(socketFD); // Close the socket
 	return 0;
 }

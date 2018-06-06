@@ -16,7 +16,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
-#define MAX_SEND_LENGTH 1000 //Max # of chars sent at any given time
+#define MAX_SEND_LENGTH 100 //Max # of chars sent at any given time
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
@@ -43,6 +43,7 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 void get_msg(char *buffer, int socketFD){
     int chars_read; //For checking correct read
     char readBuffer[10];
+    //int terminal_loc;//For finding terminating symbols
     
     //Clear buffer
     memset(buffer, '\0', sizeof(buffer));
@@ -52,6 +53,11 @@ void get_msg(char *buffer, int socketFD){
         //Clear readBuffer
         memset(readBuffer, '\0', sizeof(readBuffer));
         chars_read = recv(socketFD, readBuffer, sizeof(readBuffer)-1, 0); //Get a chunk of text
+        int i;
+        printf("received chars: %d\n", chars_read);
+        for(i=0; i < chars_read; i++){
+            printf("readBuffer: %c\n", readBuffer[i]);
+        }
         strcat(buffer, readBuffer); //Add chunk to complete text
         if(chars_read == -1){
             error("ERROR reading from socket");
@@ -59,6 +65,10 @@ void get_msg(char *buffer, int socketFD){
         //Handle case where there is nothing to read
         if(chars_read == 0) break;
     }
+
+    /*terminal_loc = strstr(buffer, "@@") - buffer; //Find terminal
+    buffer[terminal_loc] = '\0'; //End string early*/
+
     return;
 }
 
@@ -79,6 +89,12 @@ bool authenticate_client(char *buffer, int socketFD){
 
     //Read from socket
     chars_read = recv(socketFD, buffer, SIZE-1, 0);
+
+    /*int i;
+    printf("CHAR INT\n");
+    for(i=0; i < strlen(buffer); i++){
+        printf("%c %d\n", buffer[i], buffer[i]);
+    }*/
 
     //Check for success
     if(chars_read < 0) error ("ERROR reading from socket");
@@ -108,7 +124,7 @@ void send_msg(int socketFD, char *msg){
 
     //Keep sending until entire message has been sent
     while(message_length > 0){
-        //Send message in chunks of 1000
+        //Send message in chunks of max_send_length
         chars_sent = send(socketFD, current_location, MAX_SEND_LENGTH, 0);
         //Check for errors
         if (chars_sent < 0) error("ERROR writing to socket");
@@ -196,22 +212,28 @@ int main(int argc, char *argv[])
             case 0: //Successful fork, handles the connection with encryption
                 printf("Connection successful!\n");
                 //Authenticate client
+                printf("Authenticating Client\n");
                 if(authenticate_client(buffer, establishedConnectionFD) == false){
                     //Send error message
-                    send_msg(establishedConnectionFD, "unauthorized");
+                    send_msg(establishedConnectionFD, "unauthorized\n");
                 }
                 else{
                     //Send acknowledgment
-                    send_msg(establishedConnectionFD, "authorized");
+                    printf("Sending Ack\n");
+                    send_msg(establishedConnectionFD, "authorized\n");
                     //Get Text
                     get_msg(buffer, establishedConnectionFD);
+                    printf("Got Text: %s\n", buffer);
                     //Send ok msg
-                    send_msg(establishedConnectionFD, "proceed");
+                    //send_msg(establishedConnectionFD, "proceed\n");
                     //Get Key
+                    printf("Waiting for key\n");
                     get_msg(key, establishedConnectionFD);
+                    printf("Got key: %s\n", key);
                     //Encrypt
-                    printf("encryption\n");
+                    printf("encrypting\n");
                     //Send cipher
+                    send_msg(establishedConnectionFD, "ciphertext\n");
                     printf("sent cipher\n");
                 }
                 break;
