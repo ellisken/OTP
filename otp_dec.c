@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
     //Receive authorized/unauthorized message and handle
     get_msg(buffer, socketFD);
     if(strcmp(buffer, "unauthorized") == 0){
-		fprintf(stderr, "ERROR: Could not connect to otp_dec_d on port %s\n", argv[3]);
+		fprintf(stderr, "ERROR: Not authorized to connect to otp_enc_d\n");
         exit(2);
     }
 
