@@ -222,35 +222,26 @@ int main(int argc, char *argv[])
                 else{
                     //Send acknowledgment
                     printf("Sending Ack\n");
-                    fflush(stdout);
                     send_msg(establishedConnectionFD, buffer, "authorized\n");
                     //Get Text
                     get_msg(buffer, establishedConnectionFD);
                     printf("Got Text: %s\n", buffer);
-                    fflush(stdout);
-                    //Send ok msg
-                    //send_msg(establishedConnectionFD, "proceed\n");
                     //Get Key
                     printf("Waiting for key\n");
-                    fflush(stdout);
                     get_msg(key, establishedConnectionFD);
                     printf("Got key: %s\n", key);
-                    fflush(stdout);
                     //Encrypt
                     printf("encrypting\n");
-                    fflush(stdout);
                     //Send cipher
                     send_msg(establishedConnectionFD, buffer, "ciphertext\n");
-                    sleep(1);
+                    sleep(1);//Sorry this is kludgy
                     printf("sent cipher\n");
-                    fflush(stdout);
                 }
                 break;
             case -1:
                 error("otp_enc_d ERROR forking process");
                 break; 
         }
-        //shutdown(establishedConnectionFD, SHUT_WR);
         close(establishedConnectionFD);//Close connection socket
         check_background();//Clean up child processes
     }
