@@ -222,9 +222,14 @@ int main(int argc, char *argv[])
 	socklen_t sizeOfClientInfo;
 	char buffer[SIZE], key[SIZE], text[SIZE];
 	struct sockaddr_in serverAddress, clientAddress;
-    pid_t pid; //child process id 
+    pid_t pid; //child process id
+    int yes = 1;//For port reuse
 
-	if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
+	//Check for correct usage
+    if (argc < 2) { fprintf(stderr,"USAGE: %s port\n", argv[0]); exit(1); } // Check usage & args
+
+    //Allow port reuse
+    setsockopt(listenSocketFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
 	// Set up the address struct for this process (the server)
 	memset((char *)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct

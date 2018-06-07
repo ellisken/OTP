@@ -162,9 +162,13 @@ int main(int argc, char *argv[])
 	struct hostent* serverHostInfo;
 	char buffer[SIZE], cipher[SIZE], key[SIZE];
     FILE *file = NULL;
+    int yes = 1;//For port reuse
 
     //Verify correct usage
 	if (argc < 4) { fprintf(stderr,"USAGE: %s cipher key port\n", argv[0]); exit(0); } // Check usage & args
+    
+    //Allow port reuse
+    setsockopt(socketFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
     
     //Load plaintext and key into buffers
     load_from_file(cipher, file, argv[1]);

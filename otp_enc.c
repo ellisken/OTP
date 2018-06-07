@@ -143,7 +143,7 @@ void send_msg(int socketFD, char *buffer, char *msg){
         //Send message in chunks of MAX_SEND_LENGTH
         chars_sent = send(socketFD, current_location, MAX_SEND_LENGTH, 0);
         //Check for errors
-        if (chars_sent < 0) error("ERROR writing to socket");
+        if (chars_sent < 0) error("ERROR writing to socket\n");
         //Update remaining message length to send and current_location 
         message_length = message_length - chars_sent;
         current_location = current_location + chars_sent;
@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 	struct hostent* serverHostInfo;
 	char buffer[SIZE], text[SIZE], key[SIZE];
     FILE *file = NULL;
+    int yes = 1; //For allowing port reuse
 
     //Verify correct usage
 	if (argc < 4) { fprintf(stderr,"USAGE: %s plaintext key port\n", argv[0]); exit(0); } // Check usage & args
@@ -179,6 +180,9 @@ int main(int argc, char *argv[])
         error("Error: key is too short\n");
     }
 
+    //Allow port reuse
+    setsockopt(socketFD, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
 	// Set up the server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
 	portNumber = atoi(argv[3]); // Get the port number, convert to an integer from a string
@@ -190,11 +194,11 @@ int main(int argc, char *argv[])
 
 	// Set up the socket
 	socketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
-	if (socketFD < 0) error("CLIENT: ERROR opening socket");
+	if (socketFD < 0) error("CLIENT: ERROR opening socket\n");
 	
 	// Connect to server, send error if unsuccessful
 	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0){// Connect socket to address
-		fprintf(stderr, "ERROR: Could not connect to otp_enc_d on port %s", argv[3]);
+		fprintf(stderr, "ERROR: Could not connect to otp_dec_d on port %s\n", argv[3]);
         exit(2);
     }
 
@@ -204,7 +208,7 @@ int main(int argc, char *argv[])
     //Receive authorized/unauthorized message and handle
     get_msg(buffer, socketFD);
     if(strcmp(buffer, "unauthorized") == 0){
-		fprintf(stderr, "ERROR: Could not connect to otp_enc_d on port %s", argv[3]);
+		fprintf(stderr, "ERROR: Could not connect to otp_dec_d on port %s\n", argv[3]);
         exit(2);
     }
 
