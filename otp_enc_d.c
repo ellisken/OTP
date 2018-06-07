@@ -15,7 +15,7 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 
-#define SIZE 10000 //Buffer size
+#define SIZE 100000 //Buffer size
 #define MAX_SEND_LENGTH 10 //Max # of chars sent at any given time
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
@@ -43,7 +43,6 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
 void get_msg(char *buffer, int socketFD){
     int chars_read; //For checking correct read
     char readBuffer[2];
-    //int terminal_loc;//For finding terminating symbols
     
     //Clear buffer
     memset(buffer, '\0', sizeof(buffer));
@@ -66,8 +65,8 @@ void get_msg(char *buffer, int socketFD){
         if(chars_read == 0) break;
     }
 
-    /*terminal_loc = strstr(buffer, "@@") - buffer; //Find terminal
-    buffer[terminal_loc] = '\0'; //End string early*/
+    //Strip trailing newline
+    buffer[strlen(buffer) - 1] = '\0';
 
     return;
 }
@@ -140,11 +139,61 @@ void send_msg(int socketFD, char *buffer, char *msg){
 
 
 /************************************************************************
- * ** Function: encrypt()
- * ** Description: 
- * ** Parameters: 
+ * ** Function: ctoi()
+ * ** Description: Converts a given upper case alpha char into its 
+ *      corresponding number in the alphabet (e.g., A = 0, Z = 25), 
+ *      returns 26 for a space character.
+ * ** Parameters: a char
  * *********************************************************************/
-void encrypt(){
+int ctoi(char c){
+    int n;
+    //If c is a space character, return 26
+    if(c == ' ') return 26;
+
+    //Subract the capital letter A to get the correct int
+    else{
+        n = c - 'A';
+        return n;
+    }
+}
+
+
+
+/************************************************************************
+ * ** Function: itoc()
+ * ** Description: Converts a given int back into the corresponding
+ *      upper case alpha char. Returns a space char for the number 26.
+ * ** Parameters: an int 
+ * *********************************************************************/
+char itoc(int n){
+    //If n is 26, return a space
+    if(n == 26) return ' ';
+    //Else, find correct ascii for n by adding A
+    else return (n + 'A');
+}
+
+
+
+/************************************************************************
+ * ** Function: encrypt()
+ * ** Description: Encrypts the plaintext message using the given key
+ *      by assigning a number value to each plaintext char and key char,
+ *      adding them together, and taking modulo 27.
+ * ** Parameters: The plaintext array, the key array, the cipher array
+ * *********************************************************************/
+void encrypt(char *text, char *key, char *cipher){
+    int i;
+    int n;
+    
+    //Zero out the cipher
+    memset(cipher, '\0', sizeof(cipher));
+
+    //Encrypt
+    for(i=0; i < strlen(text); i++){
+        //Convert text and key chars to ints, sum
+        n = (ctoi(text[i]) + ctoi(key[i])) % 27;
+        cipher[i] = itoc(n);
+    }
 
     return;
 }
@@ -232,9 +281,14 @@ int main(int argc, char *argv[])
                     printf("Got key: %s\n", key);
                     //Encrypt
                     printf("encrypting\n");
+                    encrypt(buffer, key, cipher);
+                    //Add newline to end of cipher
+                    cipher[strlen(cipher)] = '\n';
                     //Send cipher
-                    send_msg(establishedConnectionFD, buffer, "ciphertext\n");
-                    sleep(1);//Sorry this is kludgy
+                    printf("Encrypted text is now: %s\n", cipher);
+
+                    send_msg(establishedConnectionFD, buffer, cipher);
+                    sleep(1);//Sorry this is a kludgy way to keep the connection open long enough for transmission
                     printf("sent cipher\n");
                 }
                 break;

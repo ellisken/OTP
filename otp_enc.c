@@ -18,7 +18,7 @@
 #include <netdb.h>
 #include <stdbool.h>
 
-#define SIZE 10000 //Buffer size
+#define SIZE 100000 //Buffer size
 #define MAX_SEND_LENGTH 10//Max # of chars sent at any given time
 
 /************************************************************************
