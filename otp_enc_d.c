@@ -19,30 +19,27 @@
 #define MAX_SEND_LENGTH 10 //Max # of chars sent at any given time
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
-void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
 
-        /*// Get the message from the client and display it
-        memset(buffer, '\0', SIZE);
-        charsRead = recv(establishedConnectionFD, buffer, SIZE - 1, 0); // Read the client's message from the socket
-        if (charsRead < 0) error("ERROR reading from socket");
-        printf("SERVER: I received this from the client: \"%s\"\n", buffer);
 
-        // Send a Success message back to the client
-        charsRead = send(establishedConnectionFD, "I am the server, and I got your message", 39, 0); // Send success back
-        if (charsRead < 0) error("ERROR writing to socket");*/
+/************************************************************************
+ * ** Function: error()
+ * ** Description: Sends "msg" to stderr and exits with value 1.
+ * ** Parameters: msg
+ * *********************************************************************/
+void error(const char *msg) { perror(msg); exit(1); }
 
 
 
 /************************************************************************
  * ** Function: get_msg()
  * ** Description: Reads in a message sent from the client until
- *      a newline character is reached.
+ *      a newline character is reached. Strips trailing newline.
  * ** Parameters: char buffer for storing complete message,
  *      file descriptor for connection socket.
  * *********************************************************************/
 void get_msg(char *buffer, int socketFD){
     int chars_read; //For checking correct read
-    char readBuffer[2];
+    char readBuffer[MAX_SEND_LENGTH];
     
     //Clear buffer
     memset(buffer, '\0', sizeof(buffer));
@@ -52,11 +49,11 @@ void get_msg(char *buffer, int socketFD){
         //Clear readBuffer
         memset(readBuffer, '\0', sizeof(readBuffer));
         chars_read = recv(socketFD, readBuffer, sizeof(readBuffer)-1, 0); //Get a chunk of text
-        int i;
+        /*int i;
         printf("received chars: %d\n", chars_read);
         for(i=0; i < chars_read; i++){
             printf("readBuffer: %c\n", readBuffer[i]);
-        }
+        }*/
         strcat(buffer, readBuffer); //Add chunk to complete text
         if(chars_read == -1){
             error("ERROR reading from socket");
@@ -88,12 +85,6 @@ bool authenticate_client(char *buffer, int socketFD){
 
     //Read from socket
     chars_read = recv(socketFD, buffer, SIZE-1, 0);
-
-    /*int i;
-    printf("CHAR INT\n");
-    for(i=0; i < strlen(buffer); i++){
-        printf("%c %d\n", buffer[i], buffer[i]);
-    }*/
 
     //Check for success
     if(chars_read < 0) error ("ERROR reading from socket");
@@ -192,6 +183,7 @@ void encrypt(char *text, char *key, char *cipher){
     for(i=0; i < strlen(text); i++){
         //Convert text and key chars to ints, sum
         n = (ctoi(text[i]) + ctoi(key[i])) % 27;
+        //Convert result back into char and store in cipher
         cipher[i] = itoc(n);
     }
 
@@ -246,7 +238,7 @@ int main(int argc, char *argv[])
 
 	// Enable the socket to begin listening
 	if (bind(listenSocketFD, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to port
-		error("otp_end_d ERROR on binding");
+		error("otp_enc_d ERROR on binding");
 
 	listen(listenSocketFD, 5); // Flip the socket on - it can now receive up to 5 connections
 
@@ -261,35 +253,33 @@ int main(int argc, char *argv[])
         pid = fork();
         switch(pid){
             case 0: //Successful fork, handles the connection with encryption
-                printf("Connection successful!\n");
                 //Authenticate client
-                printf("Authenticating Client\n");
                 if(authenticate_client(buffer, establishedConnectionFD) == false){
                     //Send error message
                     send_msg(establishedConnectionFD, buffer, "unauthorized\n");
                 }
                 else{
                     //Send acknowledgment
-                    printf("Sending Ack\n");
+                    //printf("Sending Ack\n");
                     send_msg(establishedConnectionFD, buffer, "authorized\n");
                     //Get Text
                     get_msg(buffer, establishedConnectionFD);
-                    printf("Got Text: %s\n", buffer);
+                    //printf("Got Text: %s\n", buffer);
                     //Get Key
-                    printf("Waiting for key\n");
+                    //printf("Waiting for key\n");
                     get_msg(key, establishedConnectionFD);
-                    printf("Got key: %s\n", key);
+                    //printf("Got key: %s\n", key);
                     //Encrypt
-                    printf("encrypting\n");
+                    //printf("encrypting\n");
                     encrypt(buffer, key, cipher);
                     //Add newline to end of cipher
                     cipher[strlen(cipher)] = '\n';
                     //Send cipher
-                    printf("Encrypted text is now: %s\n", cipher);
+                    //printf("Encrypted text is now: %s\n", cipher);
 
                     send_msg(establishedConnectionFD, buffer, cipher);
                     sleep(1);//Sorry this is a kludgy way to keep the connection open long enough for transmission
-                    printf("sent cipher\n");
+                    //printf("sent cipher\n");
                 }
                 break;
             case -1:

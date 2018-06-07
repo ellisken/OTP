@@ -22,20 +22,22 @@
 #define MAX_SEND_LENGTH 10//Max # of chars sent at any given time
 
 /************************************************************************
- * ** Function: check_background()
- * ** Description: Checks for the background child processes that have
- *      finished and cleans up zombies
- * ** Parameters: none
+ * ** Function: error()
+ * ** Description: Prints the given message to stderr and exits with
+ *      status 1.
+ * ** Parameters: a constant char message
  * *********************************************************************/
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
    
 
 
 /************************************************************************
- * ** Function: check_background()
- * ** Description: Checks for the background child processes that have
- *      finished and cleans up zombies
- * ** Parameters: none
+ * ** Function: load_from_file()
+ * ** Description: Loads the contents of the file matching "filename"
+ *      into the given buffer, using the given file descriptor.
+ *      Also strips the trailing newline off of the end of the file 
+ *      contents.
+ * ** Parameters: char buffer, file descriptor, filename
  * *********************************************************************/
 void load_from_file(char *buffer, FILE *file, char *filename){
     int charsRead;
@@ -61,10 +63,10 @@ void load_from_file(char *buffer, FILE *file, char *filename){
 
 
 /************************************************************************
- * ** Function: check_background()
- * ** Description: Checks for the background child processes that have
- *      finished and cleans up zombies
- * ** Parameters: none
+ * ** Function: verify_text()
+ * ** Description: Checks that the given "text" contains ONLY upper case
+ *      alpha characters OR the space character. Returns false otherwise.
+ * ** Parameters: text
  * *********************************************************************/
 void verify_text(char *text){
     int i;
@@ -88,13 +90,15 @@ void verify_text(char *text){
 /************************************************************************
  * ** Function: get_msg()
  * ** Description: Reads in a message sent from the client until
- *      a newline character is reached.
+ *      a newline character is reached. Does NOT strip trailing
+ *      newline character (unlike get_msg() in otp_enc_d.c) to prevent
+ *      newline being stripped from cipher when received.
  * ** Parameters: char buffer for storing complete message,
  *      file descriptor for connection socket.
  * *********************************************************************/
 void get_msg(char *buffer, int socketFD){
     int chars_read; //For checking correct read
-    char readBuffer[2];
+    char readBuffer[MAX_SEND_LENGTH];
     
     //Clear buffer
     memset(buffer, '\0', sizeof(buffer));
@@ -111,6 +115,9 @@ void get_msg(char *buffer, int socketFD){
         //Handle case where there is nothing to read
         if(chars_read == 0) break;
     }
+    
+    //Strip trailing newline
+    buffer[strlen(buffer) - 1] = '\0';
     return;
 }
 
@@ -141,7 +148,6 @@ void send_msg(int socketFD, char *buffer, char *msg){
         message_length = message_length - chars_sent;
         current_location = current_location + chars_sent;
     }
-    //send(socketFD, "\n", 1, 0);
     return;
 }
 
@@ -158,15 +164,12 @@ int main(int argc, char *argv[])
 	char buffer[SIZE], text[SIZE], key[SIZE];
     FILE *file = NULL;
 
-    
+    //Verify correct usage
 	if (argc < 4) { fprintf(stderr,"USAGE: %s plaintext key port\n", argv[0]); exit(0); } // Check usage & args
     
     //Load plaintext and key into buffers
     load_from_file(text, file, argv[1]);
     load_from_file(key, file, argv[2]);
-    //printf("Text: %s\n", text);
-    //printf("Key: %s\n", key);
-
 
     //Verify plaintext and key are valid contain only "legal"
     //characters, and that key >= plaintext in terms of size
@@ -175,7 +178,6 @@ int main(int argc, char *argv[])
     if(strlen(text) > strlen(key)){
         error("Error: key is too short\n");
     }
-
 
 	// Set up the server address struct
 	memset((char*)&serverAddress, '\0', sizeof(serverAddress)); // Clear out the address struct
@@ -190,9 +192,11 @@ int main(int argc, char *argv[])
 	socketFD = socket(AF_INET, SOCK_STREAM, 0); // Create the socket
 	if (socketFD < 0) error("CLIENT: ERROR opening socket");
 	
-	// Connect to server
-	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) // Connect socket to address
-		error("CLIENT: ERROR connecting");
+	// Connect to server, send error if unsuccessful
+	if (connect(socketFD, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0){// Connect socket to address
+		fprintf(stderr, "ERROR: Could not connect to otp_enc_d on port %s", argv[3]);
+        exit(2);
+    }
 
     //Send authentication password "enc"
     send_msg(socketFD, buffer, "enc");
@@ -200,7 +204,8 @@ int main(int argc, char *argv[])
     //Receive authorized/unauthorized message and handle
     get_msg(buffer, socketFD);
     if(strcmp(buffer, "unauthorized") == 0){
-        error("Error: unauthorized connection to server\n");    
+		fprintf(stderr, "ERROR: Could not connect to otp_enc_d on port %s", argv[3]);
+        exit(2);
     }
 
     //Add ending newlines back to plaintext and key
@@ -208,18 +213,15 @@ int main(int argc, char *argv[])
     key[strlen(key)] = '\n';
     //Send plaintext
     send_msg(socketFD, buffer, text); 
-    //Receive ok to send key
-    //get_msg(buffer, socketFD);
-    //printf("Server sent: %s\n", buffer);
-    printf("Now sending key...\n");
+    //printf("Now sending key...\n");
     //Send key
     send_msg(socketFD, buffer, key);
     //Wait to receive cipher
-    printf("Now accepting cipher...\n");
+    //printf("Now accepting cipher...\n");
     get_msg(buffer, socketFD);
     //Print cipher to console
     printf("%s\n", buffer);
-    printf("Got cipher\n");
+    //printf("Got cipher\n");
     
     //shutdown(socketFD, SHUT_WR);
 	close(socketFD); // Close the socket
