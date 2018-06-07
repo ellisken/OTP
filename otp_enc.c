@@ -19,7 +19,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
-#define MAX_SEND_LENGTH 100//Max # of chars sent at any given time
+#define MAX_SEND_LENGTH 1//Max # of chars sent at any given time
 
 /************************************************************************
  * ** Function: check_background()
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
     //printf("Server sent: %s\n", buffer);
     printf("Now sending key...\n");
     //Send key
-    //sleep(5);
+    sleep(5);
     send_msg(socketFD, key);
     sleep(1);
     //Wait to receive cipher

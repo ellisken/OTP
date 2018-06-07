@@ -16,7 +16,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
-#define MAX_SEND_LENGTH 100 //Max # of chars sent at any given time
+#define MAX_SEND_LENGTH 1 //Max # of chars sent at any given time
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
