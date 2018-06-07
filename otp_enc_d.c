@@ -16,7 +16,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
-#define MAX_SEND_LENGTH 1 //Max # of chars sent at any given time
+#define MAX_SEND_LENGTH 10 //Max # of chars sent at any given time
 #define MAX_CONNECTIONS 5 //Max number of socket connections
 
 void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
@@ -42,7 +42,7 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
  * *********************************************************************/
 void get_msg(char *buffer, int socketFD){
     int chars_read; //For checking correct read
-    char readBuffer[10];
+    char readBuffer[2];
     //int terminal_loc;//For finding terminating symbols
     
     //Clear buffer
@@ -117,10 +117,12 @@ bool authenticate_client(char *buffer, int socketFD){
  * ** Parameters: The connection socket file desriptor
  *      and a constant char message to send.
  * *********************************************************************/
-void send_msg(int socketFD, char *msg){
+void send_msg(int socketFD, char *buffer, char *msg){
     int chars_sent; //Used to track how many chars have been sent
     int message_length = strlen(msg); //Used to track how many chars (bytes) total to send 
-    char *current_location = msg; //Used to track where in the message we are, starts at beginning
+    bzero(buffer, SIZE);
+    strcpy(buffer, msg);
+    char *current_location = buffer; //Used to track where in the message we are, starts at beginning
 
     //Keep sending until entire message has been sent
     while(message_length > 0){
@@ -215,32 +217,40 @@ int main(int argc, char *argv[])
                 printf("Authenticating Client\n");
                 if(authenticate_client(buffer, establishedConnectionFD) == false){
                     //Send error message
-                    send_msg(establishedConnectionFD, "unauthorized\n");
+                    send_msg(establishedConnectionFD, buffer, "unauthorized\n");
                 }
                 else{
                     //Send acknowledgment
                     printf("Sending Ack\n");
-                    send_msg(establishedConnectionFD, "authorized\n");
+                    fflush(stdout);
+                    send_msg(establishedConnectionFD, buffer, "authorized\n");
                     //Get Text
                     get_msg(buffer, establishedConnectionFD);
                     printf("Got Text: %s\n", buffer);
+                    fflush(stdout);
                     //Send ok msg
                     //send_msg(establishedConnectionFD, "proceed\n");
                     //Get Key
                     printf("Waiting for key\n");
+                    fflush(stdout);
                     get_msg(key, establishedConnectionFD);
                     printf("Got key: %s\n", key);
+                    fflush(stdout);
                     //Encrypt
                     printf("encrypting\n");
+                    fflush(stdout);
                     //Send cipher
-                    send_msg(establishedConnectionFD, "ciphertext\n");
+                    send_msg(establishedConnectionFD, buffer, "ciphertext\n");
+                    sleep(1);
                     printf("sent cipher\n");
+                    fflush(stdout);
                 }
                 break;
             case -1:
                 error("otp_enc_d ERROR forking process");
                 break; 
         }
+        //shutdown(establishedConnectionFD, SHUT_WR);
         close(establishedConnectionFD);//Close connection socket
         check_background();//Clean up child processes
     }

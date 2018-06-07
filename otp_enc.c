@@ -19,7 +19,7 @@
 #include <stdbool.h>
 
 #define SIZE 10000 //Buffer size
-#define MAX_SEND_LENGTH 1//Max # of chars sent at any given time
+#define MAX_SEND_LENGTH 10//Max # of chars sent at any given time
 
 /************************************************************************
  * ** Function: check_background()
@@ -94,7 +94,7 @@ void verify_text(char *text){
  * *********************************************************************/
 void get_msg(char *buffer, int socketFD){
     int chars_read; //For checking correct read
-    char readBuffer[1];
+    char readBuffer[2];
     
     //Clear buffer
     memset(buffer, '\0', sizeof(buffer));
@@ -124,9 +124,11 @@ void get_msg(char *buffer, int socketFD){
  * ** Parameters: The connection socket file desriptor
  *      and a constant char message to send.
  * *********************************************************************/
-void send_msg(int socketFD, char *msg){
+void send_msg(int socketFD, char *buffer, char *msg){
     int chars_sent; //Used to track how many chars have been sent
-    int message_length = strlen(msg); //Used to track how many chars (bytes) total to send 
+    int message_length = strlen(msg); //Used to track how many chars (bytes) total to send
+    bzero(buffer, SIZE);
+    strcpy(buffer, msg);
     char *current_location = msg; //Used to track where in the message we are, starts at beginning
 
     //Keep sending until entire message has been sent
@@ -193,7 +195,7 @@ int main(int argc, char *argv[])
 		error("CLIENT: ERROR connecting");
 
     //Send authentication password "enc"
-    send_msg(socketFD, "enc");
+    send_msg(socketFD, buffer, "enc");
 
     //Receive authorized/unauthorized message and handle
     get_msg(buffer, socketFD);
@@ -205,22 +207,21 @@ int main(int argc, char *argv[])
     text[strlen(text)] = '\n';
     key[strlen(key)] = '\n';
     //Send plaintext
-    send_msg(socketFD, text); 
+    send_msg(socketFD, buffer, text); 
     //Receive ok to send key
     //get_msg(buffer, socketFD);
     //printf("Server sent: %s\n", buffer);
     printf("Now sending key...\n");
     //Send key
-    sleep(5);
-    send_msg(socketFD, key);
-    sleep(1);
+    send_msg(socketFD, buffer, key);
     //Wait to receive cipher
     printf("Now accepting cipher...\n");
     get_msg(buffer, socketFD);
     //Print cipher to console
     printf("%s\n", buffer);
+    printf("Got cipher\n");
     
-    shutdown(socketFD, SHUT_WR);
+    //shutdown(socketFD, SHUT_WR);
 	close(socketFD); // Close the socket
 	return 0;
 }
