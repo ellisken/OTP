@@ -27,7 +27,7 @@
  *      status 1.
  * ** Parameters: a constant char message
  * *********************************************************************/
-void error(const char *msg) { perror(msg); exit(1); } // Error function used for reporting issues
+void error(const char *msg) { fprintf(stderr,msg); exit(1); } // Error function used for reporting issues
    
 
 
@@ -217,15 +217,12 @@ int main(int argc, char *argv[])
     key[strlen(key)] = '\n';
     //Send plaintext
     send_msg(socketFD, buffer, text); 
-    //printf("Now sending key...\n");
     //Send key
     send_msg(socketFD, buffer, key);
     //Wait to receive cipher
-    //printf("Now accepting cipher...\n");
     get_msg(buffer, socketFD);
     //Print cipher to console
     printf("%s\n", buffer);
-    //printf("Got cipher\n");
     
     //shutdown(socketFD, SHUT_WR);
 	close(socketFD); // Close the socket
