@@ -261,31 +261,25 @@ int main(int argc, char *argv[])
                 if(authenticate_client(buffer, establishedConnectionFD) == false){
                     //Send error message
                     send_msg(establishedConnectionFD, buffer, "unauthorized\n");
+                    break;
                 }
                 else{
                     //Send acknowledgment
-                    //printf("Sending Ack\n");
                     send_msg(establishedConnectionFD, buffer, "authorized\n");
                     //Get Text
                     get_msg(buffer, establishedConnectionFD);
-                    //printf("Got Text: %s\n", buffer);
                     //Get Key
-                    //printf("Waiting for key\n");
                     get_msg(key, establishedConnectionFD);
-                    //printf("Got key: %s\n", key);
                     //Encrypt
-                    //printf("encrypting\n");
                     encrypt(buffer, key, cipher);
                     //Add newline to end of cipher
                     cipher[strlen(cipher)] = '\n';
                     //Send cipher
-                    //printf("Encrypted text is now: %s\n", cipher);
-
                     send_msg(establishedConnectionFD, buffer, cipher);
                     sleep(1);//Sorry this is a kludgy way to keep the connection open long enough for transmission
                     //printf("sent cipher\n");
+                    break;
                 }
-                break;
             case -1:
                 error("otp_enc_d ERROR forking process");
                 break; 

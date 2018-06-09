@@ -263,6 +263,7 @@ int main(int argc, char *argv[])
                 if(authenticate_client(buffer, establishedConnectionFD) == false){
                     //Send error message
                     send_msg(establishedConnectionFD, buffer, "unauthorized\n");
+                    break;
                 }
                 else{
                     //Send acknowledgment
@@ -278,8 +279,8 @@ int main(int argc, char *argv[])
                     //Send plaintext
                     send_msg(establishedConnectionFD, buffer, text);
                     sleep(1);//Sorry this is a kludgy way to keep the connection open long enough for transmission
+                    break;
                 }
-                break;
             case -1:
                 error("otp_enc_d ERROR forking process");
                 break; 
