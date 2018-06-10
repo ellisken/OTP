@@ -42,7 +42,7 @@ void error(const char *msg) { perror(msg); exit(1); } // Error function used for
  * *********************************************************************/
 void load_from_file(char *buffer, FILE *file, char *filename){
     int charsRead;
-
+    //Zero out buffer
     memset(buffer, '\0', sizeof(buffer));
     //Open file
     file = fopen(filename, "r");
@@ -133,7 +133,7 @@ void get_msg(char *buffer, int socketFD){
 void send_msg(int socketFD, char *buffer, char *msg){
     int chars_sent; //Used to track how many chars have been sent
     int message_length = strlen(msg); //Used to track how many chars (bytes) total to send
-    bzero(buffer, SIZE);
+    memset(buffer, '\0', sizeof(buffer));
     strcpy(buffer, msg);
     char *current_location = msg; //Used to track where in the message we are, starts at beginning
 

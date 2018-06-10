@@ -2,7 +2,9 @@
  * ** Program Filename: otp_enc_d.c
  * ** Author: Kendra Ellis <ellisken@oregonstate.edu>
  * ** Date: June 1, 2018
- * ** Description:
+ * ** Description: Allows connections from otp_enc.c and encrypts
+ *      a plaintext file using the given key. Sends the cipher back
+ *      to otp_enc.c
  * ** Input:
  * ** Output:
  * *********************************************************************/
@@ -81,7 +83,7 @@ bool authenticate_client(char *buffer, int socketFD){
     int chars_read; //For checking correct read
 
     //Clear buffer
-    memset(buffer, '\0', SIZE);
+    memset(buffer, '\0', sizeof(buffer));
 
     //Read from socket
     chars_read = recv(socketFD, buffer, SIZE-1, 0);
@@ -110,7 +112,7 @@ bool authenticate_client(char *buffer, int socketFD){
 void send_msg(int socketFD, char *buffer, char *msg){
     int chars_sent; //Used to track how many chars have been sent
     int message_length = strlen(msg); //Used to track how many chars (bytes) total to send 
-    bzero(buffer, SIZE);
+    memset(buffer, '\0', sizeof(buffer));
     strcpy(buffer, msg);
     char *current_location = buffer; //Used to track where in the message we are, starts at beginning
 
@@ -277,7 +279,8 @@ int main(int argc, char *argv[])
                     //Send cipher
                     send_msg(establishedConnectionFD, buffer, cipher);
                     sleep(1);//Sorry this is a kludgy way to keep the connection open long enough for transmission
-                    //printf("sent cipher\n");
+                    //Zero out the buffer
+                    memset(buffer, '\0', sizeof(buffer));
                     break;
                 }
             case -1:

@@ -79,7 +79,7 @@ bool authenticate_client(char *buffer, int socketFD){
     int chars_read; //For checking correct read
 
     //Clear buffer
-    memset(buffer, '\0', SIZE);
+    memset(buffer, '\0', sizeof(buffer));
 
     //Read from socket
     chars_read = recv(socketFD, buffer, SIZE-1, 0);
@@ -108,7 +108,7 @@ bool authenticate_client(char *buffer, int socketFD){
 void send_msg(int socketFD, char *buffer, char *msg){
     int chars_sent; //Used to track how many chars have been sent
     int message_length = strlen(msg); //Used to track how many chars (bytes) total to send 
-    bzero(buffer, SIZE);
+    memset(buffer, '\0', sizeof(buffer));
     strcpy(buffer, msg);
     char *current_location = buffer; //Used to track where in the message we are, starts at beginning
 
@@ -173,11 +173,11 @@ char itoc(int n){
 void decrypt(char *cipher, char *key, char *text){
     int i;
     int n;
-    
-    //Zero out the cipher
-    memset(text, '\0', sizeof(text));
 
-    //Encrypt
+    //Zero out the text
+    memset(text, '\0', SIZE);
+
+    //Decrypt
     for(i=0; i < strlen(cipher); i++){
         //Convert text and key chars to ints, get difference, mod 27
         //Takes absolute value to handle negative results
@@ -187,6 +187,8 @@ void decrypt(char *cipher, char *key, char *text){
         //Convert result back into char and store in cipher
         text[i] = itoc(n);
     }
+
+    printf("Length of plaintext before returning from decrypt is: %i\n", strlen(text));
 
     return;
 }
@@ -270,15 +272,19 @@ int main(int argc, char *argv[])
                     send_msg(establishedConnectionFD, buffer, "authorized\n");
                     //Get Text
                     get_msg(buffer, establishedConnectionFD);
+                    printf("length of cipher is: %i\n", strlen(buffer));
                     //Get Key
                     get_msg(key, establishedConnectionFD);
                     //Decrypt
                     decrypt(buffer, key, text);
                     //Add newline to end of cipher
+                    printf("length of plaintext is: %i\n", strlen(text));
                     text[strlen(text)] = '\n';
                     //Send plaintext
                     send_msg(establishedConnectionFD, buffer, text);
                     sleep(1);//Sorry this is a kludgy way to keep the connection open long enough for transmission
+                    //Zero out the buffer
+                    memset(buffer, '\0', sizeof(buffer));
                     break;
                 }
             case -1:
